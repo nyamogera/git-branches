@@ -1,0 +1,10 @@
+{
+  "name": "git-branches",
+  "version": "0.5.0",
+  "description": "easy git branches",
+  "main": "index.js",
+  "scripts": {
+  },
+  "author": "nyamogera<nyamogera@gmail.com>",
+  "license": "MIT"
+}

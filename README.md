@@ -5,14 +5,13 @@ Gitのブランチ操作をほんのすこしだけ楽にするツールです
 # Demo
 ![](./images/hamster-paradise.gif)
 
-# Usage
-インストール
+# Install
 ターミナルやPowerShellで以下のコマンドを入力します
 ```
 npm install -g https://github.com/nyamogera/git-branches
 ```
 
-### Usage
+# Usage
 ターミナルやPowerShellで以下のコマンドを入力します
 ```
 git-branches

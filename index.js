@@ -6,11 +6,12 @@ const argv = yargs
     .command('--checkout', 'checkout branch')
     .command('--edit', 'edit branch description')
     .command('--delete', 'delete branch')
+    .command('--show', 'show branch')
     .demandCommand(0)
     .help()
     .argv
 
-// 操作は一つを選ぶ
+// 引数で指定できる操作は1つのみ
 let argvAction = '';
 if (argv.checkout) {
     argvAction = 'checkout';
@@ -21,6 +22,23 @@ else if (argv.edit) {
 else if (argv.delete) {
     argvAction = 'delete';
 }
+else if (argv.show) {
+    argvAction = 'show';
+}
+
+const showMode = argvAction === 'show';
+
+
+const commands = [
+    { id: 'checkout', description: 'Checkout branch', action: (branch) => { execBranchAction(`git checkout ${branch}`); }, exceptingCurrentBranch: true, disabled: `Already on` },
+    { id: 'edit', description: 'Edit description', action: (branch) => { execSyncBranchAction(`git branch --edit-description ${branch}`); }, exceptingCurrentBranch: false },
+    { id: 'delete', description: 'Delete branch', action: (branch) => { execBranchAction(`git branch -d ${branch}`); }, exceptingCurrentBranch: true, disabled: `Cannot delete` },
+    { id: 'quit', description: 'Quit', action: (branch) => { emptyAction(''); }, exceptingCurrentBranch: false },
+];
+const commandsMap = commands.reduce((map, command) => {
+    map[command.id] = command;
+    return map;
+}, {});
 
 const { execSync, exec } = require('child_process');
 const inquirer = require('inquirer');
@@ -59,7 +77,7 @@ const execGetBranchDescription = (branch, isCurrent, action) => {
         exec(`git config branch.${branch}.description`, (error, stdout, stderr) => {
             const mark = (isCurrent ? '* ' : '  ');
             let disabledOption = {};
-            if (action && isCurrent && commandsMap[action].exceptingCurrentBranch)
+            if (action && isCurrent && commandsMap[action] && commandsMap[action].exceptingCurrentBranch)
             {
                 disabledOption = { disabled: `${action} cannot be executed`};
             }
@@ -99,6 +117,12 @@ async function main() {
         }
     });
 
+    if(showMode)
+    {
+        return;
+    }
+
+    // Quitが選ばれたとき
     if(!branch)
     {
         return;
@@ -142,19 +166,6 @@ const emptyAction = (command) => {
         resolve();
     });
 }
-
-const commands = [
-    { id: 'checkout', description: 'Checkout branch', action: (branch) => { execBranchAction(`git checkout ${branch}`); }, exceptingCurrentBranch: true, disabled: `Already on` },
-    { id: 'edit', description: 'Edit description', action: (branch) => { execSyncBranchAction(`git branch --edit-description ${branch}`); }, exceptingCurrentBranch: false },
-    { id: 'delete', description: 'Delete branch', action: (branch) => { execBranchAction(`git branch -d ${branch}`); }, exceptingCurrentBranch: true, disabled: `Cannot delete` },
-    { id: 'quit', description: 'Quit', action: (branch) => { emptyAction(''); }, exceptingCurrentBranch: false },
-];
-
-const commandsMap = commands.reduce((map, command) => {
-    map[command.id] = command;
-    return map;
-}, {});
-
 
 async function selectCommand(branch, isCurrentBranch) {
     const commandChoises = commands.map((command) => {

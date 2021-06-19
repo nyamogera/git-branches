@@ -77,20 +77,57 @@ async function main() {
 
 }
 
+const execBranchAction = (branchCommand) => {
+    return new Promise((resolve, reject) => {
+        console.log(branchCommand);
+        exec(branchCommand, (error, stdout, stderr) => {
+            if (error || stderr) {
+                console.log(stderr);
+                return resolve();
+            }
+            return resolve();
+        });
+    });
+}
+
+const execSyncBranchAction = (branchCommand) => {
+    return new Promise((resolve, reject) => {
+        const result = execSync(branchCommand, { stdio: 'inherit' });
+        console.log(result.toString());
+        resolve();
+    });
+}
+
+const emptyAction = (command) => {
+    return new Promise((resolve, reject) => {
+        resolve();
+    });
+}
+
+const commands = [
+    { id: 'checkout', description: 'Checkout branch', action: (branch) => { execBranchAction(`git checkout ${branch}`); }, exceptingCurrentBranch: true, disabled: `Already on` },
+    { id: 'edit', description: 'Edit description', action: (branch) => { execSyncBranchAction(`git branch --edit-description ${branch}`); }, exceptingCurrentBranch: false },
+    { id: 'delete', description: 'Delete branch', action: (branch) => { execBranchAction(`git branch -d ${branch}`); }, exceptingCurrentBranch: true, disabled: `Cannot delete` },
+    { id: 'quit', description: 'Quit', action: (branch) => { emptyAction(''); }, exceptingCurrentBranch: false }
+];
+
+const commandsMap = commands.reduce((map, command) => {
+    map[command.id] = command;
+    return map;
+}, {});
+
+
 async function selectCommand(branch, isCurrentBranch) {
-    const checkoutCommand = { name: 'Checkout branch', value: 'git checkout ::branch::' };
-    const deleteCommand = { name: 'Delete branch', value: 'git branch -d ::branch::' };
-    if (isCurrentBranch) {
-        // 現在のブランチはcheckoutもdeleteもできないので選択できないようにする
-        checkoutCommand.disabled = `Already on`;
-        deleteCommand.disabled = `Cannot delete'`;
+    const commandChoises = commands.map((command) => {
+        let cohise = {
+            name: command.description,
+            value: command.id
+        };
+        if (isCurrentBranch && command.exceptingCurrentBranch) {
+            cohise.disabled = command.disabled;
     }
-    const commandChoises = [
-        checkoutCommand,
-        { name: 'Edit description', value: 'git branch --edit-description ::branch::' },
-        deleteCommand,
-        { name: 'Quit', value: '' },
-    ]
+        return cohise;
+    });
 
     await inquirer.prompt([{
         type: 'list',
@@ -98,10 +135,8 @@ async function selectCommand(branch, isCurrentBranch) {
         message: 'Select command',
         choices: commandChoises,
     }]).then((answers) => {
-        const command = answers.command.replace('::branch::', branch);
-        if (command !== '') {
-            execSync(command, { stdio: 'inherit' });
-        }
+        const command = answers.command;
+        commandsMap[command].action(branch);
     });
 }
 

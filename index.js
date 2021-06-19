@@ -1,6 +1,7 @@
 #! /usr/bin/env node
 
 const { execSync, exec } = require('child_process');
+const inquirer = require('inquirer');
 
 /**
  * リポジトリのローカルブランチ一覧
@@ -53,8 +54,6 @@ async function main() {
     const currentBranch = branches.current;
     const branchWithDescription = await Promise.all(branches.list.map(branch => execGetBranchDescription(branch, branch === currentBranch)));
 
-    const inquirer = require('inquirer');
-
     // ブランチ名を選択する
     const branch = await inquirer.prompt([
         {
@@ -73,6 +72,12 @@ async function main() {
 
     // ブランチ選択可能な処理を選ぶ
     const isCurrentBranch = currentBranch == branch;
+    
+    await selectCommand(branch, isCurrentBranch);
+
+}
+
+async function selectCommand(branch, isCurrentBranch) {
     const checkoutCommand = { name: 'Checkout branch', value: 'git checkout ::branch::' };
     const deleteCommand = { name: 'Delete branch', value: 'git branch -d ::branch::' };
     if (isCurrentBranch) {
@@ -97,8 +102,7 @@ async function main() {
         if (command !== '') {
             execSync(command, { stdio: 'inherit' });
         }
-    })
-
+    });
 }
 
 main().then(() => {

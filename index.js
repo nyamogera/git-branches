@@ -3,6 +3,7 @@
 
 const yargs = require('yargs');
 const argv = yargs
+    .command('--current', 'select current branch')
     .command('--checkout', 'checkout branch')
     .command('--edit', 'edit branch description')
     .command('--delete', 'delete branch')
@@ -26,8 +27,8 @@ else if (argv.show) {
     argvAction = 'show';
 }
 
+const selectCurrentBranch = argv.current;
 const showMode = argvAction === 'show';
-
 
 const commands = [
     { id: 'checkout', description: 'Checkout branch', action: (branch) => { execBranchAction(`git checkout ${branch}`); }, exceptingCurrentBranch: true, disabled: `Already on` },
@@ -102,7 +103,7 @@ async function main() {
     const branchWithDescription = await Promise.all(branches.list.map(branch => execGetBranchDescription(branch, branch === currentBranch, argvAction)));
 
     // ブランチ名を選択する
-    const branch = await inquirer.prompt([
+    const branch = selectCurrentBranch ? currentBranch : await inquirer.prompt([
         {
             type: 'list',
             name: 'branch',

@@ -34,7 +34,6 @@ const commands = [
     { id: 'checkout', description: 'Checkout branch', action: (branch) => { execBranchAction(`git checkout ${branch}`); }, exceptingCurrentBranch: true, disabled: `Already on` },
     { id: 'edit', description: 'Edit description', action: (branch) => { execSyncBranchAction(`git branch --edit-description ${branch}`); }, exceptingCurrentBranch: false },
     { id: 'delete', description: 'Delete branch', action: (branch) => { execBranchAction(`git branch -d ${branch}`); }, exceptingCurrentBranch: true, disabled: `Cannot delete` },
-    { id: 'quit', description: 'Quit', action: (branch) => { emptyAction(''); }, exceptingCurrentBranch: false },
 ];
 const commandsMap = commands.reduce((map, command) => {
     map[command.id] = command;
@@ -162,12 +161,6 @@ const execSyncBranchAction = (branchCommand) => {
     });
 }
 
-const emptyAction = (command) => {
-    return new Promise((resolve, reject) => {
-        resolve();
-    });
-}
-
 async function selectCommand(branch, isCurrentBranch) {
     const commandChoises = commands.map((command) => {
         let cohise = {
@@ -184,9 +177,14 @@ async function selectCommand(branch, isCurrentBranch) {
         type: 'list',
         name: 'command',
         message: 'Select command',
-        choices: commandChoises,
+        choices: [...commandChoises, {name:'Quit', value:''} ]
     }]).then((answers) => {
         const command = answers.command;
+        // Quitが選ばれたとき
+        if(!command)
+        {
+            return;
+        }
         commandsMap[command].action(branch);
     });
 }

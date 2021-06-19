@@ -2,7 +2,7 @@
   "name": "git-branches",
   "version": "0.5.0",
   "description": "easy git branches",
-  "bin": { 
+  "bin": {
     "git-branches": "index.js"
   },
   "scripts": {
@@ -11,6 +11,7 @@
   "author": "nyamogera<nyamogera@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "inquirer": "^8.1.1"
+    "inquirer": "^8.1.1",
+    "yargs": "^17.0.1"
   }
 }

@@ -1,5 +1,27 @@
 #! /usr/bin/env node
 
+
+const yargs = require('yargs');
+const argv = yargs
+    .command('--checkout', 'checkout branch')
+    .command('--edit', 'edit branch description')
+    .command('--delete', 'delete branch')
+    .demandCommand(0)
+    .help()
+    .argv
+
+// 操作は一つを選ぶ
+let argvAction = '';
+if (argv.checkout) {
+    argvAction = 'checkout';
+}
+else if (argv.edit) {
+    argvAction = 'edit';
+}
+else if (argv.delete) {
+    argvAction = 'delete';
+}
+
 const { execSync, exec } = require('child_process');
 const inquirer = require('inquirer');
 
@@ -32,27 +54,34 @@ const execGetBranches = () => {
  * @param branch string
  * @returns Promise<{name:string, value:string}>
  */
-const execGetBranchDescription = (branch, isCurrent) => {
+const execGetBranchDescription = (branch, isCurrent, action) => {
     return new Promise((resolve, reject) => {
         exec(`git config branch.${branch}.description`, (error, stdout, stderr) => {
             const mark = (isCurrent ? '* ' : '  ');
+            let disabledOption = {};
+            if (action && isCurrent && commandsMap[action].exceptingCurrentBranch)
+            {
+                disabledOption = { disabled: `${action} cannot be executed`};
+            }
+
             if (error || stderr) {
                 // `git config branch.${branch}.description`の中身がない場合はエラーがでるので無視してすすめる
-                return resolve({ name: mark + branch, value: branch });
+                return resolve({ name: mark + branch, value: branch, ...disabledOption });
             }
             return resolve({
                 name: `${mark}${branch} : ${stdout.trim()}`,
-                value: branch
+                value: branch,
+                ...disabledOption
             });
-        })
-    })
+        });
+    });
 }
 
 async function main() {
 
     const branches = await execGetBranches();
     const currentBranch = branches.current;
-    const branchWithDescription = await Promise.all(branches.list.map(branch => execGetBranchDescription(branch, branch === currentBranch)));
+    const branchWithDescription = await Promise.all(branches.list.map(branch => execGetBranchDescription(branch, branch === currentBranch, argvAction)));
 
     // ブランチ名を選択する
     const branch = await inquirer.prompt([
@@ -60,7 +89,7 @@ async function main() {
             type: 'list',
             name: 'branch',
             message: 'Select branch',
-            choices: branchWithDescription
+            choices: [...branchWithDescription, {name:'  Quit', value:''} ]
         }
     ]).then((answers) => {
         return answers.branch;
@@ -70,11 +99,22 @@ async function main() {
         }
     });
 
+    if(!branch)
+    {
+        return;
+    }
+
     // ブランチ選択可能な処理を選ぶ
     const isCurrentBranch = currentBranch == branch;
-    
-    await selectCommand(branch, isCurrentBranch);
 
+    if (argvAction)
+    {
+        commandsMap[argvAction].action(branch);
+    }
+    else
+    {
+        await selectCommand(branch, isCurrentBranch);
+    }
 }
 
 const execBranchAction = (branchCommand) => {
@@ -92,8 +132,7 @@ const execBranchAction = (branchCommand) => {
 
 const execSyncBranchAction = (branchCommand) => {
     return new Promise((resolve, reject) => {
-        const result = execSync(branchCommand, { stdio: 'inherit' });
-        console.log(result.toString());
+        execSync(branchCommand, { stdio: 'inherit' });
         resolve();
     });
 }
@@ -108,7 +147,7 @@ const commands = [
     { id: 'checkout', description: 'Checkout branch', action: (branch) => { execBranchAction(`git checkout ${branch}`); }, exceptingCurrentBranch: true, disabled: `Already on` },
     { id: 'edit', description: 'Edit description', action: (branch) => { execSyncBranchAction(`git branch --edit-description ${branch}`); }, exceptingCurrentBranch: false },
     { id: 'delete', description: 'Delete branch', action: (branch) => { execBranchAction(`git branch -d ${branch}`); }, exceptingCurrentBranch: true, disabled: `Cannot delete` },
-    { id: 'quit', description: 'Quit', action: (branch) => { emptyAction(''); }, exceptingCurrentBranch: false }
+    { id: 'quit', description: 'Quit', action: (branch) => { emptyAction(''); }, exceptingCurrentBranch: false },
 ];
 
 const commandsMap = commands.reduce((map, command) => {
@@ -125,7 +164,7 @@ async function selectCommand(branch, isCurrentBranch) {
         };
         if (isCurrentBranch && command.exceptingCurrentBranch) {
             cohise.disabled = command.disabled;
-    }
+        }
         return cohise;
     });
 
